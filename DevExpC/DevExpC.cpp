@@ -5,6 +5,7 @@
 #include "DeviceManager.h"
 #define INITGUID
 #include <devpkey.h>
+#include "DriverManager.h"
 
 
 std::wstring GuidToString(GUID const& guid) {
@@ -147,6 +148,21 @@ void EnumDevNodes() {
 }
 
 int main() {
+	auto drivers = DriverManager::EnumKernelDrivers();
+
+	auto dm = DeviceManager::Create();;
+	for (auto& di : dm->EnumDevices()) {
+		auto res = DeviceNode(di.Data.DevInst).GetResources();
+		if(!res.empty())
+			printf("Inst: %u Resources: %u\n", di.Data.DevInst, (uint32_t)res.size());
+	}
+
+	SetupDiCallClassInstaller(DIF_SELECTDEVICE, dm->InfoSet(), nullptr);
+
+	for (auto g : DeviceManager::BuildClassInfoList(0)) {
+		printf("%ws (%ws)\n", GuidToString(g).c_str(), DeviceManager::GetSetupClassDescription(g).c_str());
+	}
+
 	//DumpDeviceInterfaces();
 	//DumpHardwareProfiles();
 	//DumpDeviceClasses();
@@ -154,10 +170,6 @@ int main() {
 
 	//TestEnum();
 
-	auto dm = DeviceManager::Create();
-	for (auto& di : dm->EnumDevices()) {
-		DeviceNode(di.Data.DevInst).GetResources();
-	}
 
 	return 0;
 }

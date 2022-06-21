@@ -22,7 +22,7 @@ int CDeviceClassesView::GetRowImage(HWND h, int row, int col) {
 	return 0;
 }
 
-void CDeviceClassesView::DoSort(SortInfo* const si) {
+void CDeviceClassesView::DoSort(SortInfo const* si) {
 	auto compare = [&](auto const& n1, auto const& n2) {
 		return SortHelper::Sort(n1.Name, n2.Name, si->SortAscending);
 	};
@@ -112,7 +112,7 @@ LRESULT CDeviceClassesView::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
 	cm->AddColumn(L"Details", LVCFMT_LEFT, 550, 2);
 	cm->UpdateColumns();
 
-	m_Splitter.SetSplitterPosPct(30);
+	m_Splitter.SetSplitterPosPct(25);
 	m_Splitter.SetSplitterPanes(m_Tree, m_List);
 
 	Refresh();
@@ -233,6 +233,18 @@ LRESULT CDeviceClassesView::OnEnableDisableDevice(WORD /*wNotifyCode*/, WORD /*w
 	return 0;
 }
 
+LRESULT CDeviceClassesView::OnDeviceProperties(WORD, WORD, HWND, BOOL&) {
+	CString name;
+	m_Tree.GetItemText(m_Tree.GetSelectedItem(), name);
+	auto inst = (DEVINST)m_Tree.GetItemData(m_Tree.GetSelectedItem());
+	if (inst >= 0x8000)
+		return 0;
+	
+	auto index = m_DevMgr->GetDeviceIndex(inst);
+	Helpers::DisplayProperties(name, *m_DevMgr, m_Devices[index]);
+	return 0;
+}
+
 bool CDeviceClassesView::OnTreeRightClick(HWND, HTREEITEM hItem, POINT const& pt) {
 	m_Tree.SelectItem(hItem);
 	CMenu menu;
@@ -246,12 +258,30 @@ bool CDeviceClassesView::OnTreeRightClick(HWND, HTREEITEM hItem, POINT const& pt
 	return false;
 }
 
+bool CDeviceClassesView::OnRightClickList(HWND, int row, int col, CPoint const& pt) {
+	CMenu menu;
+	menu.LoadMenu(IDR_CONTEXT);
+	return GetFrame()->TrackPopupMenu(menu.GetSubMenu(1), TPM_RIGHTBUTTON, pt.x, pt.y);
+}
+
+bool CDeviceClassesView::OnTreeDoubleClick(HWND, HTREEITEM hItem) {
+	if (m_Tree.GetItemData(hItem) >= 0x8000)
+		return false;
+
+	LRESULT result;
+	ProcessWindowMessage(m_hWnd, WM_COMMAND, ID_DEVICE_PROPERTIES, 0, result, 1);
+	return true;
+}
+
 void CDeviceClassesView::UpdateUI(CUpdateUIBase& ui) {
 	ui.UISetCheck(ID_VIEW_SHOWHIDDENDEVICES, m_ShowHiddenDevices);
 	ui.UISetCheck(ID_VIEW_SHOWEMPTYCLASSES, m_ShowEmptyClasses);
+	auto dev = GetItemData<DEVINST>(m_Tree, m_Tree.GetSelectedItem());
+	ui.UIEnable(ID_DEVICE_PROPERTIES, dev < 0x8000 && m_Tree.GetSelectedItem() != m_Tree.GetRootItem());
+
 	int selected = m_List.GetSelectionMark();
 	if (SecurityHelper::IsRunningElevated()) {
-		DeviceNode dn(GetItemData<DEVINST>(m_Tree, m_Tree.GetSelectedItem()));
+		DeviceNode dn(dev);
 		bool enabled = dn.IsEnabled();
 		ui.UIEnable(ID_DEVICE_ENABLE, !enabled);
 		ui.UIEnable(ID_DEVICE_DISABLE, enabled);
@@ -262,4 +292,12 @@ void CDeviceClassesView::UpdateUI(CUpdateUIBase& ui) {
 		ui.UIEnable(ID_DEVICE_DISABLE, false);
 		ui.UIEnable(ID_DEVICE_UNINSTALL, false);
 	}
+}
+
+bool CDeviceClassesView::OnDoubleClickList(HWND, int row, int col, POINT const& pt) const {
+	if (row < 0)
+		return false;
+
+	auto const& item = m_Items[row];
+	return Helpers::DisplayProperty(item.Key, DeviceNode(GetItemData<DEVINST>(m_Tree, m_Tree.GetSelectedItem())), item.Name);
 }

@@ -23,12 +23,20 @@ CString CDevNodeView::GetColumnText(HWND, int row, int col) {
 	return L"";
 }
 
-void CDevNodeView::DoSort(SortInfo* const si) {
+void CDevNodeView::DoSort(SortInfo const* si) {
 	auto compare = [&](auto const& n1, auto const& n2) {
 		return SortHelper::Sort(n1.Name, n2.Name, si->SortAscending);
 	};
 
-	std::sort(m_Items.begin(), m_Items.end(), compare);
+	std::ranges::sort(m_Items, compare);
+}
+
+bool CDevNodeView::OnDoubleClickList(HWND, int row, int col, POINT const& pt) const {
+	if (row < 0)
+		return false;
+
+	auto const& item = m_Items[row];
+	return Helpers::DisplayProperty(item.Key, DeviceNode(GetItemData<DEVINST>(m_Tree, m_Tree.GetSelectedItem())), item.Name);
 }
 
 void CDevNodeView::OnTreeSelChanged(HWND, HTREEITEM hOld, HTREEITEM hNew) {
@@ -77,6 +85,12 @@ bool CDevNodeView::OnTreeRightClick(HWND, HTREEITEM hItem, POINT const& pt) {
 	return false;
 }
 
+bool CDevNodeView::OnTreeDoubleClick(HWND, HTREEITEM hItem) {
+	LRESULT result;
+	ProcessWindowMessage(m_hWnd, WM_COMMAND, ID_DEVICE_PROPERTIES, 0, result, 1);
+	return true;
+}
+
 BOOL CDevNodeView::PreTranslateMessage(MSG* pMsg) {
 	pMsg;
 	return FALSE;
@@ -84,9 +98,11 @@ BOOL CDevNodeView::PreTranslateMessage(MSG* pMsg) {
 
 void CDevNodeView::UpdateUI(CUpdateUIBase& ui) {
 	ui.UISetCheck(ID_VIEW_SHOWHIDDENDEVICES, m_ShowHiddenDevices);
+	auto dev = GetItemData<DEVINST>(m_Tree, m_Tree.GetSelectedItem());
+	ui.UIEnable(ID_DEVICE_PROPERTIES, dev < 0x8000 && m_Tree.GetSelectedItem() != m_Tree.GetRootItem());
 	int selected = m_List.GetSelectionMark();
 	if (SecurityHelper::IsRunningElevated()) {
-		DeviceNode dn(GetItemData<DEVINST>(m_Tree, m_Tree.GetSelectedItem()));
+		DeviceNode dn(dev);
 		bool enabled = dn.IsEnabled();
 		ui.UIEnable(ID_DEVICE_ENABLE, !enabled);
 		ui.UIEnable(ID_DEVICE_DISABLE, enabled);
@@ -106,14 +122,10 @@ void CDevNodeView::OnPageActivated(bool active) {
 		::SetFocus(m_Focus);
 }
 
-void CDevNodeView::OnFinalMessage(HWND /*hWnd*/) {
-	delete this;
-}
-
 LRESULT CDevNodeView::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	m_hWndClient = m_Splitter.Create(m_hWnd, rcDefault, nullptr, WS_CLIPCHILDREN | WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS);
 	m_Tree.Create(m_Splitter, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS |
-		TVS_LINESATROOT | TVS_HASBUTTONS | TVS_HASLINES | TVS_SHOWSELALWAYS);
+		TVS_HASBUTTONS | TVS_HASLINES | TVS_SHOWSELALWAYS);
 	m_Tree.SetExtendedStyle(TVS_EX_DOUBLEBUFFER, 0);
 
 	CImageList images;
@@ -235,5 +247,15 @@ void CDevNodeView::BuildChildDevNodes(HTREEITEM hParent, DeviceNode const& node)
 LRESULT CDevNodeView::OnEnableDisableDevice(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	DeviceNode dn((DEVINST)m_Tree.GetItemData(m_Tree.GetSelectedItem()));
 	auto result = dn.IsEnabled() ? dn.Disable() : dn.Enable();
+	return 0;
+}
+
+LRESULT CDevNodeView::OnViewProperties(WORD, WORD, HWND, BOOL&) {
+	auto inst = (DEVINST)m_Tree.GetItemData(m_Tree.GetSelectedItem());
+	auto index = m_DevMgr->GetDeviceIndex(inst);
+	CString name;
+	m_Tree.GetItemText(m_Tree.GetSelectedItem(), name);
+	Helpers::DisplayProperties(name, *m_DevMgr, m_Devices[index]);
+
 	return 0;
 }

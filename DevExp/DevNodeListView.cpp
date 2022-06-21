@@ -7,6 +7,28 @@
 #include "ClipboardHelper.h"
 #include "SecurityHelper.h"
 
+DWORD CDevNodeListView::OnPrePaint(int, LPNMCUSTOMDRAW cd) {
+	return CDRF_NOTIFYITEMDRAW;
+}
+
+DWORD CDevNodeListView::OnItemPrePaint(int, LPNMCUSTOMDRAW cd) {
+	return CDRF_NOTIFYSUBITEMDRAW;
+}
+
+DWORD CDevNodeListView::OnSubItemPrePaint(int, LPNMCUSTOMDRAW cd) {
+	auto lv = (NMLVCUSTOMDRAW*)cd;
+	if (lv->iSubItem != 1)
+		return CDRF_SKIPPOSTPAINT;
+
+	auto& item = m_Items[(int)cd->dwItemSpec];
+	if ((DeviceNode(item.Data.DevInst).GetStatus() & DeviceNodeStatus::HasProblem) == DeviceNodeStatus::HasProblem) {
+		::DrawIconEx(cd->hdc, 12, cd->rc.top + 4, AtlLoadSysIcon(IDI_WARNING), 16, 16, 0, nullptr, DI_NORMAL);
+	}
+
+	return CDRF_SKIPPOSTPAINT;
+}
+
+
 void CDevNodeListView::Refresh() {
 	bool first = m_Items.empty();
 	m_Items = m_dm->EnumDevices<DeviceItem>(m_ShowHiddenDevices);
@@ -24,7 +46,7 @@ void CDevNodeListView::Refresh() {
 CString CDevNodeListView::GetColumnText(HWND, int row, int col) {
 	auto& item = m_Items[row];
 	switch (GetColumnManager(m_List)->GetColumnTag<ColumnType>(col)) {
-		case ColumnType::Name: return item.Description.c_str();
+		case ColumnType::Name: return item.Description.empty() ? L"This PC" : item.Description.c_str();
 		case ColumnType::Instance: return std::to_wstring(item.Data.DevInst).c_str();
 		case ColumnType::Class:
 			return GetDeviceClassName(item);
@@ -47,6 +69,12 @@ bool CDevNodeListView::OnRightClickList(HWND, int row, int col, POINT const& pt)
 	CMenu menu;
 	menu.LoadMenu(IDR_CONTEXT);
 	return GetFrame()->TrackPopupMenu(menu.GetSubMenu(0), TPM_RIGHTBUTTON, pt.x, pt.y);
+}
+
+bool CDevNodeListView::OnDoubleClickList(HWND, int row, int col, POINT const&) {
+	LRESULT result;
+	ProcessWindowMessage(m_hWnd, WM_COMMAND, ID_DEVICE_PROPERTIES, 0, result, 1);
+	return true;
 }
 
 LRESULT CDevNodeListView::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
@@ -105,7 +133,7 @@ int CDevNodeListView::GetRowImage(HWND, int row, int) {
 	return item.Image;
 }
 
-void CDevNodeListView::DoSort(SortInfo* const si) {
+void CDevNodeListView::DoSort(const SortInfo* si) {
 	if (si == nullptr)
 		return;
 
@@ -152,8 +180,11 @@ LRESULT CDevNodeListView::OnCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 void CDevNodeListView::UpdateUI(CUpdateUIBase& ui) {
 	ui.UISetCheck(ID_VIEW_SHOWHIDDENDEVICES, m_ShowHiddenDevices);
 	int selected = m_List.GetSelectionMark();
+	auto dev = selected >= 0 ? m_Items[selected].Data.DevInst : 0;
+	ui.UIEnable(ID_DEVICE_PROPERTIES, m_List.GetSelectedCount() == 1 && dev != (DEVINST)m_dm->GetRootDeviceNode());
+
 	if (SecurityHelper::IsRunningElevated() && m_List.GetSelectedCount() == 1) {
-		DeviceNode dn(m_Items[selected].Data.DevInst);
+		DeviceNode dn(dev);
 		bool enabled = dn.IsEnabled();
 		ui.UIEnable(ID_DEVICE_ENABLE, !enabled);
 		ui.UIEnable(ID_DEVICE_DISABLE, enabled);
@@ -180,6 +211,12 @@ LRESULT CDevNodeListView::OnEnableDisableDevice(WORD /*wNotifyCode*/, WORD /*wID
 
 LRESULT CDevNodeListView::OnItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/) {
 	UpdateUI(GetFrame()->GetUI());
+	return 0;
+}
+
+LRESULT CDevNodeListView::OnDeviceProperties(WORD, WORD, HWND, BOOL&) {
+	auto& item = m_Items[m_List.GetSelectionMark()];
+	Helpers::DisplayProperties(item.Description.c_str(), *m_dm, item);
 	return 0;
 }
 

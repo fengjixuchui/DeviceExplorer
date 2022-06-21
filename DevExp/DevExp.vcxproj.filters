@@ -57,6 +57,21 @@
     <ClCompile Include="DeviceInterfacesView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="MultiStringListDlg.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralPropertyPage.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="ResourcesPropertyPage.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="DriversPropertyPage.cpp">
+      <Filter>Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="DriversView.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -96,6 +111,21 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="DeviceInterfacesView.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="MultiStringListDlg.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralPropertyPage.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourcesPropertyPage.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="DriversPropertyPage.h">
+      <Filter>Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="DriversView.h">
       <Filter>Views</Filter>
     </ClInclude>
   </ItemGroup>
@@ -145,6 +175,33 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\interface.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\driver.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\driver-kmdf.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\globe.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\flag.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\power.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Text.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Binary.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\interrupt.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\LPT-plug.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

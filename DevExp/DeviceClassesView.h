@@ -2,17 +2,16 @@
 
 #include "ViewBase.h"
 #include "resource.h"
-#include "VirtualListView.h"
+#include <VirtualListView.h>
 #include "DeviceManager.h"
-#include "TreeViewHelper.h"
+#include <TreeViewHelper.h>
+#include <CustomSplitterWindow.h>
 
 class CDeviceClassesView :
-	public CFrameWindowImpl<CDeviceClassesView, CWindow, CControlWinTraits>,
 	public CTreeViewHelper<CDeviceClassesView>,
 	public CViewBase<CDeviceClassesView>,
 	public CVirtualListView<CDeviceClassesView> {
 public:
-	using BaseFrame = CFrameWindowImpl<CDeviceClassesView, CWindow, CControlWinTraits>;
 	using CViewBase::CViewBase;
 	DECLARE_WND_CLASS(nullptr)
 
@@ -20,7 +19,9 @@ public:
 
 	CString GetColumnText(HWND h, int row, int col);
 	int GetRowImage(HWND h, int row, int col);
-	void DoSort(SortInfo* const si);
+	void DoSort(SortInfo const* si);
+	bool OnDoubleClickList(HWND, int row, int col, POINT const& pt) const;
+	bool OnTreeDoubleClick(HWND, HTREEITEM hItem);
 
 protected:
 	BEGIN_MSG_MAP(CDeviceClassesView)
@@ -28,7 +29,6 @@ protected:
 		NOTIFY_CODE_HANDLER(LVN_ITEMCHANGED, OnItemChanged)
 		NOTIFY_CODE_HANDLER(NM_SETFOCUS, OnNotifySetFocus)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
-		CHAIN_MSG_MAP(BaseFrame)
 		CHAIN_MSG_MAP(CVirtualListView<CDeviceClassesView>)
 		CHAIN_MSG_MAP(CTreeViewHelper<CDeviceClassesView>)
 		CHAIN_MSG_MAP(CViewBase)
@@ -37,12 +37,14 @@ protected:
 		COMMAND_ID_HANDLER(ID_VIEW_REFRESH, OnViewRefresh)
 		COMMAND_ID_HANDLER(ID_VIEW_SHOWHIDDENDEVICES, OnShowHiddenDevices)
 		COMMAND_ID_HANDLER(ID_VIEW_SHOWEMPTYCLASSES, OnShowEmptyClasses)
+		COMMAND_ID_HANDLER(ID_DEVICE_PROPERTIES, OnDeviceProperties)
 		COMMAND_ID_HANDLER(ID_DEVICE_ENABLE, OnEnableDisableDevice)
 		COMMAND_ID_HANDLER(ID_DEVICE_DISABLE, OnEnableDisableDevice)
 	END_MSG_MAP()
 
 	void OnTreeSelChanged(HWND, HTREEITEM hOld, HTREEITEM hNew);
 	bool OnTreeRightClick(HWND, HTREEITEM hItem, POINT const& pt);
+	bool OnRightClickList(HWND, int row, int col, CPoint const& pt);
 
 	void OnPageActivated(bool active);
 	void UpdateUI(CUpdateUIBase& ui);
@@ -71,10 +73,11 @@ private:
 	LRESULT OnShowHiddenDevices(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnShowEmptyClasses(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEnableDisableDevice(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDeviceProperties(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	CListViewCtrl m_List;
 	CTreeViewCtrl m_Tree;
-	CSplitterWindow m_Splitter;
+	CCustomSplitterWindow m_Splitter;
 	std::vector<Property> m_Items;
 	std::unique_ptr<DeviceManager> m_DevMgr;
 	std::vector<DeviceInfo> m_Devices;
